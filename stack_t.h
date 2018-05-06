@@ -47,3 +47,5 @@ class Stack_t
         StackElem_t Pop                ();
         int Size                       ();
 };
+
+#include "functions.hpp"

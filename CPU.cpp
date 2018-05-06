@@ -96,9 +96,9 @@ void do_commands (int* buffer)
 
     int i = 0;
 
-    while (buffer[i] != 0)
+    while ((int) buffer[i] != 0)
     {
-        switch (buffer[i]){
+        switch ((int) buffer[i]){
         #define DEF_CMD(name, compiler_code, cpu_code, disassembler_code)\
                     cpu_code
         #define DEF_REG(name, code)
@@ -108,7 +108,7 @@ void do_commands (int* buffer)
         #undef DEF_REG
         #undef DEF_CMD
         }
-        i++;
+	i++;
 
     }
 }

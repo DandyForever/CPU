@@ -17,9 +17,9 @@ struct Label_t
 };
 
 bool islabel            (FILE* input_file);
-void compile            (FILE* input_file, const char* command, Label_t* labels,const int num_of_labels, int* buffer, int* index);
-void compile_file       (const char* input_file_name, Label_t* labels, int* num_of_labels, int* buffer, int* i);
-void write_to_file      (int* buffer, const int number_of_commands);
+void compile            (FILE* input_file, const char* command, Label_t* labels,const int num_of_labels, double* buffer, int* index);
+void compile_file       (const char* input_file_name, Label_t* labels, int* num_of_labels, double* buffer, int* i);
+void write_to_file      (double* buffer, const int number_of_commands);
 
 #define DEF_CMD(name, compiler_code, cpu_code, disassembler_code)
 #define DEF_REG(name, code)
@@ -37,7 +37,7 @@ int main ()
     int num_of_labels = 0;
     assert (&num_of_labels);
 
-    int* buffer = (int*) calloc (CODE_SIZE, sizeof (*buffer));
+    double* buffer = (double*) calloc (CODE_SIZE, sizeof (*buffer));
     assert (buffer);
 
     int number_of_commands = 0;
@@ -54,6 +54,7 @@ int main ()
 
     write_to_file (buffer, number_of_commands);
     free (input_file_name);
+    free (buffer);
     return 0;
 }
 
@@ -62,7 +63,7 @@ int main ()
 //!
 //! @param [in] input_file_name    pointer on input file variable
 //---------------------------------------------------------------
-void compile_file (const char* input_file_name, Label_t* labels, int* num_of_labels, int* buffer, int* i)
+void compile_file (const char* input_file_name, Label_t* labels, int* num_of_labels, double* buffer, int* i)
 {
     FILE* input_file = fopen (input_file_name, "rb");
     assert (input_file);
@@ -114,7 +115,7 @@ int tell_register (const char* register_name)
 //! @param [in] command         string type command
 //! @param [in] output_file     pointer on output file variable
 //-------------------------------------------------------------
-void compile (FILE* input_file, const char* command, Label_t* labels, const int num_of_labels, int* buffer, int* index)
+void compile (FILE* input_file, const char* command, Label_t* labels, const int num_of_labels, double* buffer, int* index)
 {
     #define DEF_CMD(name, compiler_code, cpu_code, disassembler_code)\
             compiler_code
@@ -145,7 +146,7 @@ bool islabel (FILE* input_file)
     return number != -1;
 }
 
-void write_to_file (int* buffer, const int number_of_commands)
+void write_to_file (double* buffer, const int number_of_commands)
 {
     FILE* output_file = fopen ("CPU_commands.txt", "w");
     assert (output_file);
@@ -159,7 +160,7 @@ void write_to_file (int* buffer, const int number_of_commands)
     {
         if (buffer[i] == PUSH || buffer[i] == POP)
         {
-            fprintf (output_file, "%d %d %d\n", buffer[i], buffer[i + 1], buffer[i + PUSH_VAL]);
+            fprintf (output_file, "%g %g %g\n", buffer[i], buffer[i + 1], buffer[i + PUSH_VAL]);
             i++;
             i++;
             i++;
@@ -168,12 +169,12 @@ void write_to_file (int* buffer, const int number_of_commands)
                  buffer[i] == JAE || buffer[i] == JB || buffer[i] == JBE || buffer[i] == JMP ||
                  buffer[i] == CALL)
                  {
-                    fprintf (output_file, "%d %d\n", buffer[i], buffer[i + 1]);
+                    fprintf (output_file, "%g %g\n", buffer[i], buffer[i + 1]);
                     i++;
                     i++;
                  }
         else
-            fprintf (output_file, "%d\n", buffer[i++]);
+            fprintf (output_file, "%g\n", buffer[i++]);
     }
 
     fclose (output_file);

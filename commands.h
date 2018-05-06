@@ -1,5 +1,8 @@
 ///MAKER OF COMMANDS OF COMPILER
 //------------------------------
+
+#include "enums.h"
+
 #define COMMAND(name)\
         if (strcmp (command, #name) == 0)
 
@@ -119,6 +122,18 @@
 \
                     break;
 
+#define RAM_PUSH(name, name_cpu)\
+                case name:\
+                cpu.stck.Push (cpu.ram[(int) name_cpu]);\
+\
+                break;
+
+#define RAM_POP(name, name_cpu)\
+                case name:\
+                    cpu.ram[(int) name_cpu] = cpu.stck.Pop ();\
+\
+                    break;
+
 #define OPERATIONS(name, operation)\
         case name:\
             STACK_SMALL\
@@ -145,10 +160,20 @@
 
 #define REGISTER_CPU(name, function)\
             case name:\
-                fprintf (output_file, #function);\
+                {\
+		fprintf (output_file, #function);\
                 fprintf (output_file, " ");\
                 fprintf (output_file, #name);\
                 fprintf (output_file, "\n");\
+\
+                break;}
+
+#define REGISTER_RAM_CPU(name_r, function)\
+            case name_r:\
+                fprintf (output_file, #function);\
+                fprintf (output_file, " [");\
+                fprintf (output_file, #name_r);\
+                fprintf (output_file, "]\n");\
 \
                 break;
 
@@ -160,14 +185,14 @@
 \
                 break;
 
-#define SIMPLE_COMMAND_DIS(name)\
-            case name:\
-                fprintf (output_file, #name);\
+#define SIMPLE_COMMAND_DIS(name_c)\
+            case name_c:\
+                fprintf (output_file, #name_c);\
                 fprintf (output_file, "\n");\
                 \
                 break;
 
-enum commands {
+/*enum commands {
     END   =  0,
     PUSH  =  1,
     ADD   =  2,
@@ -192,52 +217,73 @@ enum commands {
 };
 
 enum registers {
-    AX = 1,
-    BX = 2,
-    CX = 3,
-    DX = 4
+    AX = 100,
+    BX = 200,
+    CX = 300,
+    DX = 400
 };
 
 enum pushtypes {
-    VAL = 1,
-    REG = 2,
-    RAM = 3
-};
+    VAL = 101,
+    REG = 202,
+    RAM = 303,
+    REGRAM = 404
+};*/
+
 
 DEF_CMD(PUSH, COMMAND(PUSH)
     {
-        REGISTER_NAME
+        //REGISTER_NAME
+        char* register_name = (char*) calloc (REGISTER_SZ, sizeof (*register_name));
+        assert (register_name);
 
-        if (number == -1)
+        int number = -1;
+        assert (&number);
+
+        getc (input_file);
+
+        fscanf (input_file, "[%[ABCDX]]%n", register_name, &number);
+
+        if (number != -1)
         {
-            int value = 0;
-            assert (&value);
+            buffer[(*index)++] = PUSH;
+            buffer[(*index)++] = REGRAM;
+            buffer[(*index)++] = tell_register (register_name);
+        }
 
-            fscanf (input_file, "[%d]%n", &value, &number);
+        else
+        {
+            fscanf (input_file, "%[ABCDX]%n", register_name, &number);
 
             if (number == -1)
             {
-                fscanf (input_file, "%d%n", &value, &number);
+                double value = 0;
+                assert (&value);
 
+                fscanf (input_file, "%lf%n", &value, &number);
                 NOT_WRONG_COMMAND
-                buffer[(*index)++] = PUSH;
-                buffer[(*index)++] = VAL;
-                buffer[(*index)++] = value;
+
+                if (getc (input_file) != ']')
+                {
+
+                    buffer[(*index)++] = PUSH;
+                    buffer[(*index)++] = VAL;
+                    buffer[(*index)++] = value;
+                }
+                else
+                {
+                    buffer[(*index)++] = PUSH;
+                    buffer[(*index)++] = RAM;
+                    buffer[(*index)++] = (int)value;
+                }
             }
             else
             {
                 buffer[(*index)++] = PUSH;
-                buffer[(*index)++] = RAM;
-                buffer[(*index)++] = value;
+                buffer[(*index)++] = REG;
+                buffer[(*index)++] = tell_register (register_name);
             }
         }
-        else
-        {
-            buffer[(*index)++] = PUSH;
-            buffer[(*index)++] = REG;
-            buffer[(*index)++] = tell_register (register_name);
-        }
-
         free (register_name);
     }
 
@@ -245,13 +291,13 @@ DEF_CMD(PUSH, COMMAND(PUSH)
         case PUSH:
             i++;
 
-            switch (buffer[i]) {
+            switch ((int) buffer[i]) {
             case VAL:
                 cpu.stck.Push (buffer[i + 1]);
 
                 break;
             case REG:
-                switch (buffer[i + 1]) {
+                switch ((int) buffer[i + 1]) {
 
                 REG_PUSH(AX, cpu.ax)
                 REG_PUSH(BX, cpu.bx)
@@ -263,11 +309,25 @@ DEF_CMD(PUSH, COMMAND(PUSH)
             case RAM:
                 if (buffer[i + 1] >= RamSize)
                 {
-                    printf ("WRONG ADDRESS OF RAM [%d]", buffer[i + 1]);
+                    printf ("WRONG ADDRESS OF RAM [%d]", (int) buffer[i + 1]);
                     assert (0);
                 }
                 else
-                    cpu.stck.Push (cpu.ram[buffer[i + 1]]);
+                    cpu.stck.Push (cpu.ram[(int) buffer[i + 1]]);
+
+                break;
+
+            case REGRAM:
+                switch ((int) buffer[i + 1]) {
+
+                RAM_PUSH(AX, cpu.ax)
+                RAM_PUSH(BX, cpu.bx)
+                RAM_PUSH(CX, cpu.cx)
+                RAM_PUSH(DX, cpu.dx)
+                UNCKNOWN_REGISTER
+                }
+
+                break;
             }
             i++;
             break;,
@@ -295,33 +355,64 @@ DEF_CMD(PUSH, COMMAND(PUSH)
             case RAM:
                 i++;
                 fprintf (output_file, "PUSH [%d]\n", buffer[i]);
-            }
+		
+		break;
+            
+            case REGRAM:
+                i++;
+                switch (buffer[i])
+                {
+                    REGISTER_RAM_CPU(AX, PUSH)
+                    REGISTER_RAM_CPU(BX, PUSH)
+                    REGISTER_RAM_CPU(CX, PUSH)
+                    REGISTER_RAM_CPU(DX, PUSH)
+                    UNCKNOWN_REGISTER
+                }
+
+                break;}
             break;)
 
 DEF_CMD(POP, COMMAND(POP)
     {
-        REGISTER_NAME
+        char* register_name = (char*) calloc (REGISTER_SZ, sizeof (*register_name));
+        assert (register_name);
 
-        if (number == -1)
+        int number = -1;
+        assert (&number);
+        getc (input_file);
+
+        fscanf (input_file, "[%[ABCDX]]%n", register_name, &number);
+
+        if (number != -1)
         {
-            int value = 0;
-            assert (&value);
-
-            fscanf (input_file, "[%d]%n", &value, &number);
-
-            NOT_WRONG_COMMAND
-
             buffer[(*index)++] = POP;
-            buffer[(*index)++] = RAM;
-            buffer[(*index)++] = value;
+            buffer[(*index)++] = REGRAM;
+            buffer[(*index)++] = tell_register (register_name);
         }
         else
         {
-            buffer[(*index)++] = POP;
-            buffer[(*index)++] = REG;
-            buffer[(*index)++] = tell_register (register_name);
-        }
+            fscanf (input_file, "%[ABCDX]%n", register_name, &number);
 
+            if (number == -1)
+            {
+                int value = 0;
+                assert (&value);
+
+                fscanf (input_file, "%d]%n", &value, &number);
+
+                NOT_WRONG_COMMAND
+
+                buffer[(*index)++] = POP;
+                buffer[(*index)++] = RAM;
+                buffer[(*index)++] = value;
+            }
+            else
+            {
+                buffer[(*index)++] = POP;
+                buffer[(*index)++] = REG;
+                buffer[(*index)++] = tell_register (register_name);
+            }
+        }
         free (register_name);
     }
 
@@ -329,11 +420,11 @@ DEF_CMD(POP, COMMAND(POP)
         case POP:
             i++;
             EMPTY_STACK
-            switch (buffer[i])
+            switch ((int) buffer[i])
             {
             case REG:
                 {
-                    switch (buffer[i + 1]){
+                    switch ((int) buffer[i + 1]){
 
                     REG_POP(AX, cpu.ax)
                     REG_POP(BX, cpu.bx)
@@ -347,11 +438,26 @@ DEF_CMD(POP, COMMAND(POP)
                 {
                     if (buffer[i + 1] >= RamSize)
                     {
-                        printf ("WRONG ADDRESS OF RAM [%d]", buffer[i + 1]);
+                        printf ("WRONG ADDRESS OF RAM [%d]", (int) buffer[i + 1]);
                         assert (0);
                     }
                     else
-                        cpu.ram[buffer[i + 1]] = cpu.stck.Pop ();
+                        cpu.ram[(int) buffer[i + 1]] = cpu.stck.Pop ();
+
+                    break;
+                }
+
+            case REGRAM:
+                {
+                    switch ((int) buffer[i + 1]){
+
+                    RAM_POP(AX, cpu.ax)
+                    RAM_POP(BX, cpu.bx)
+                    RAM_POP(CX, cpu.cx)
+                    RAM_POP(DX, cpu.dx)
+                    UNCKNOWN_REGISTER;
+                    }
+                    break;
                 }
             }
             i++;
@@ -377,6 +483,20 @@ DEF_CMD(POP, COMMAND(POP)
                 {
                 fprintf (output_file, "POP [%d]\n", buffer[i + 1]);
                 }
+
+                break;
+
+            case REGRAM:
+                switch (buffer[i + 1])
+                {
+                REGISTER_RAM_CPU(AX, POP)
+                REGISTER_RAM_CPU(BX, POP)
+                REGISTER_RAM_CPU(CX, POP)
+                REGISTER_RAM_CPU(DX, POP)
+                UNCKNOWN_REGISTER
+                }
+
+                break;
             }
             i++;
 
@@ -390,7 +510,7 @@ DEF_CMD(DIV, SIMPLE_COMMAND(DIV), OPERATIONS(DIV, /), SIMPLE_COMMAND_DIS(DIV))
 DEF_CMD(OUT, SIMPLE_COMMAND(OUT), case OUT:
             EMPTY_STACK
             {
-                printf ("%f\n", cpu.stck.Pop ());
+                printf ("%g\n", cpu.stck.Pop ());
             }
 
             break;,

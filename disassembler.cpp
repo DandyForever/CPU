@@ -32,10 +32,15 @@ int main ()
         int* buffer = make_buffer (input_file);
         assert (buffer);
 
+//for (int i = 1; i < 50; i++)
+//printf("%d\n", buffer[i]);
+
         std::set < int > labels = labels_numbers (buffer);
         assert (&labels);
 
         make_command_file (buffer, labels);
+
+	free (buffer);
     }
     return 0;
 }
@@ -78,7 +83,7 @@ void make_command_file (int* buffer, const std::set < int > labels)
     {
         if (labels.count (i))
             fprintf (output_file, ":%d\n", i);
-
+	
         switch (buffer[i])
         {
             #define DEF_CMD(name, compiler_code, cpu_code, disassembler_code)\
